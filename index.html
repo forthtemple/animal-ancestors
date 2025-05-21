@@ -1,0 +1,440 @@
+<!doctype html>
+<html>
+    
+<head>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>Animal Ancestors</title>
+    <link href='https://fonts.googleapis.com/css?family=Roboto' rel='stylesheet' type='text/css'>
+    <style type="text/css">
+        body { 
+            background-color: #ffffff; 
+            font-family: 'Roboto';
+           
+         }
+
+        .window {
+            font-weight: bold;
+            cursor: pointer;
+            border:1px solid #346789;
+            box-shadow: 2px 2px 10px #aaa;
+            -o-box-shadow: 2px 2px 10px #aaa;
+            -webkit-box-shadow: 2px 2px 10px #aaa;
+            -moz-box-shadow: 2px 2px 10px #aaa;
+            -moz-border-radius:0.5em;
+            border-radius:0.5em;
+            /*
+            opacity:0.8;
+            filter:alpha(opacity=80);
+            */
+            width: 10em; height: auto;
+            padding: 0.5em 0em;
+            text-align:center;
+            z-index:20; position:absolute;
+            background-color:#eeeeef;
+            color:black;
+            font-family:helvetica;
+            font-size:0.9em;
+            word-wrap:break-word;
+        }
+
+        .window:hover {
+            box-shadow: 2px 2px 10px #444;
+            -o-box-shadow: 2px 2px 10px #444;
+            -webkit-box-shadow: 2px 2px 10px #444;
+            -moz-box-shadow: 2px 2px 10px #444;
+            /*
+            opacity:0.6;
+            filter:alpha(opacity=60);
+            */
+        }
+
+        /*
+        .window > div {
+            margin-top: 19%;
+            margin-bottom: 19%;
+        }
+        */
+
+        .hidden {
+            display: none;
+        }
+
+        .collapser {
+            cursor: pointer;
+            border:1px dotted gray;
+            z-index:21;
+        }
+
+        .errorWindow {
+            border: 2px solid red;
+        }
+
+        #treemain {
+            height: 10000px;
+            width: 6000px; /*100%;*/
+            position: relative;
+            overflow: auto;
+			transform-origin: top left;
+			/*transform: scale(0.2);*/
+            
+        }
+        .content {
+        padding: 20px;
+        }
+
+        .mysection img {
+        width: 600px;
+        /* height: 100px;*/
+        float: right;
+        margin-left: 10px;
+        background-color: lightblue;
+        }
+		
+		.loader {
+		  border: 16px solid #f3f3f3; /* Light grey */
+		  border-top: 16px solid green; /*3498db;*/ /* Blue */
+		  border-radius: 50%;
+		  width: 220px;
+		  height: 220px;
+		  animation: spin 2s linear infinite;
+		}
+
+		@keyframes spin {
+		  0% { transform: rotate(0deg); }
+		  100% { transform: rotate(360deg); }
+		}
+    </style>
+</head>
+<body>
+    <h2><a  href="https://www.forthtemple.com"><img width='150' src='forthtemple.png'></a>  Animal Ancestors</h2>
+    <table><td width="560">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style='background-color:green; color:white; padding:5px; border-radius:5px'>85 animals</span> and their ancestors all the way up to <i>Choanoflagellates</i> </td><td  style='color:grey'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Zoom:</td><td width="300"><div id="slider"></div></td></table>
+    <div id="dialog" title="Species">
+        <section class="mysection">
+            <img id='dialogimg'  />
+            <div class="content">
+            <p id='dialogmsg'>
+            </p>
+            </div>
+        </section>
+
+    </div>
+
+    <div id="treemain" >
+    <div class="loader"></div> 
+    </div>
+  
+     <link rel="stylesheet" href="https://code.jquery.com/ui/1.14.1/themes/base/jquery-ui.css">
+     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/1.12.1/jquery.min.js"></script>
+
+    <!--<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>-->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsPlumb/1.7.10/jsPlumb.min.js" integrity="sha512-A1gTsaWUck7mkEu6D8/938PKlkVS79TkgqAloQbGU4bhOPUBS9JVknN5x++J3eRNO8g6D/T3kqhHBd4KkqRNxg==" crossorigin="anonymous"></script>
+    <script type="text/javascript" src="jsplumb-tree.js"></script>
+      <script src="https://code.jquery.com/ui/1.14.1/jquery-ui.js"></script>
+    <script src="creole.js"></script>
+
+    <script type="text/javascript">
+        levels={0:["Choanoflagellates"]};
+        output='';
+
+        // jsplumb need integer as ids so convert a species into an id in the correct tree order
+        function getid(spec, ancestors) {
+            let cnt = 0;
+            for (const level in levels) {
+                for (const specii of levels[level]) {
+                    if (spec === specii) {
+                        return String(cnt);
+                    }
+                    cnt++;
+                }
+            }
+        }
+
+        // get the levels of each species from Choanoflagellates so can work out correct id of species nodes
+        function recurselevels(spec, ancestors, level) {
+            let cnt = 0;
+            for (let specii in ancestors) {
+                // console.log("sspcc", specii, "onclick='click(this)'");
+                if (specii !== 'Choanoflagellates' && specii !== spec && ancestors[specii].ancestor === spec) {
+                    // console.log("specii", specii, level);
+                    if (!(level in levels)) {
+                        levels[level] = [];
+                    }
+                    levels[level].push(specii);
+                    recurselevels(specii, ancestors, level + 1);
+                    cnt += 1;
+                }
+            }
+        }  
+
+        // Generate the jsplumb tree based upon the tree in the ancestors.json file
+        function recurse(spec, ancestors, parent) {
+            let cnt = 0;
+            for (let specii in ancestors) {
+                if (specii !== 'Choanoflagellates' && specii !== spec && ancestors[specii]['ancestor'] === spec) {
+                    // get first child
+                    let child = '';
+                    for (let speciii in ancestors) {
+                        if (child === '' && speciii !== 'Choanoflagellates' && ancestors[speciii]['ancestor'] === specii) {
+                            child = getid(speciii, ancestors); // notice JS camelCase getId()
+                        }
+                    }
+
+                    // Get the next sibling
+                    let sibling = '';
+                    id= getid(specii, ancestors);
+                    for (let speciii in ancestors) {
+                        if (getid(speciii,ancestors) > id && sibling === '' && speciii !== 'Choanoflagellates' && ancestors[speciii]['ancestor'] === spec) {
+                            sibling = getid(speciii, ancestors);
+                        }
+                    
+                    }
+                    // If its one of the animals chosen the make it green
+                    let msg = specii;
+                    if ('common' in ancestors[specii]) {
+                        msg += ' - <font color="white">' + ancestors[specii]['common'].charAt(0).toUpperCase() + ancestors[specii]['common'].slice(1) + "</font>";
+                        var ex = ' style="background-color:green" ';
+                    } else {
+                        var ex = '';
+                    }
+                    output += 
+                        '<div id="node_' + getid(specii, ancestors) + '" spec="' + specii + '" ' + ex + ' class="window hidden"\n' +
+                        ' data-id="' + getid(specii, ancestors) + '"\n' +
+                        ' data-parent="' + getid(parent, ancestors) + '"\n' +
+                        ' data-first-child="' + child + '"\n' +
+                        ' data-next-sibling="' + sibling + '">\n' +
+                        ' ' + msg + ' <img specimg="' + specii + '" src="imagessmall/' + specii + '.jpg">\n' +
+                        '</div>\n';
+                    recurse(specii, ancestors, spec);
+                    cnt += 1;
+                }
+            }
+        }
+
+
+        // Zoom the tree
+        function zoom(amt,timeout)
+        {
+            if (amt<1) {
+				document.getElementById('treemain').style.transform = 'scale('+amt+')';
+                amt*=1.01;
+                if (amt>1)
+                  amt=1;
+                if (timeout)
+                  setTimeout('zoom('+amt+',true)', 0.1);
+            }
+        }
+
+        let ancestors={};
+
+        jsPlumb.ready(function() {
+
+            // first load the ancestors json file 
+            fetch('./ancestors.json')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                return response.json();  
+            })
+            .then(json => {
+                ancestors=json; 
+                
+                // Generate the tree real time
+                recurselevels("Choanoflagellates",ancestors,0);
+                console.log('id'+getid("Metazoa",ancestors));
+                output+=
+                    '<div id="node_'+getid('Choanoflagellates',ancestors)+'" spec="Choanoflagellates" class="window hidden" \n'+
+                    '     data-id="'+getid('Choanoflagellates',ancestors)+'" \n '+
+                    '     data-parent="" \n '+
+                    '     data-first-child="1" \n '+
+                    '     data-next-sibling=""> \n '+
+                    '    Choanoflagellates  <img src="imagessmall/Choanoflagellates.jpg"  specimg="Choanoflagellates" > \n '+
+                    '</div> \n ';
+                recurse("Choanoflagellates",ancestors,"Choanoflagellates");
+                $("#treemain").html(
+                    output
+                    /*'<div id="node_0" spec="Choanoflagellates" class="window hidden"'+ 
+                    '    data-id="0" '+ 
+                    '    data-parent="" '+ 
+                    '   data-first-child="1"'+  
+                    '   data-next-sibling=""> '+ 
+                    '    Choanoflagellates  <img src="imagessmall/Choanoflagellates.jpg"  specimg="Choanoflagellates" > '+ 
+                    '</div> '+ 
+                    '<div id="node_1" spec="Metazoa" class="window hidden" '+ 
+                    '    data-id="1" '+ 
+                    '   data-parent="0" '+ 
+                    '    data-first-child=""'+  
+                    '   data-next-sibling=""> '+ 
+                    '    Metazoa <img specimg="Metazoa" src="imagessmall/Metazoa.jpg"> '+ 
+                    '</div> '*/
+                 );
+
+
+                // load creole so can convert creole markup text to html
+                creole = new Parse.Simple.Creole({
+                    forIE: document.all,
+                });
+                var connectorPaintStyle = {
+                    lineWidth:3,
+                    strokeStyle:"#4F81BE",
+                    joinstyle:"round"
+                };
+
+                var pdef = {
+                    // disable dragging
+                    DragOptions: null,
+                    // the tree container
+                    Container : "treemain"
+                };
+                var plumb = jsPlumb.getInstance(pdef);
+
+                // all sizes are in pixels
+                var opts = {
+                    prefix: 'node_',
+                    // left margin of the root node
+                    baseLeft: 24,
+                    // top margin of the root node
+                    baseTop: 24,
+                    // node width
+                    nodeWidth: 100,
+                    // horizontal margin between nodes
+                    hSpace: 36,
+                    // vertical margin between nodes
+                    vSpace: 10,
+                    imgPlus: 'tree_expand.png',
+                    imgMinus: 'tree_collapse.png',
+                    // queste non sono tutte in pixel
+                    sourceAnchor: [ 1, 0.5, 1, 0, 10, 0 ],
+                    targetAnchor: "LeftMiddle",
+                    sourceEndpoint: {
+                        endpoint:["Image", {url: "tree_collapse.png"}],
+                        cssClass:"collapser",
+                        isSource:true,
+                        connector:[ "Flowchart", { stub:[40, 60], gap:[10, 0], cornerRadius:5, alwaysRespectStubs:false } ],
+                        connectorStyle:connectorPaintStyle,
+                        enabled: false,
+                        maxConnections:-1,
+                        dragOptions:null
+                    },
+                    targetEndpoint: {
+                        endpoint:"Blank",
+                        maxConnections:-1,
+                        dropOptions:null,
+                        enabled: false,
+                        isTarget:true
+                    },
+                    connectFunc: function(tree, node) {
+                        var cid = node.data('id');
+                        console.log('Connecting node ' + cid);
+                    }
+                };
+                var tree = jQuery.jsPlumbTree(plumb, opts);
+                tree.init();
+                window.treemain = tree;
+
+                // Make so images fade in when loading
+                $.fn.ImageLoad = function(url){
+                    $this = $(this);
+                    $this.hide().load(function(){
+                        $this.fadeIn();
+                    });
+                    this[0].src = url;
+                };
+
+        
+                // If click on a species show the species info contained in the ancestor.json file
+                $(document).on('mouseup', '#treemain', function(e){
+                    var element= e.target ? e.target : e.srcElement;
+                    if (element.hasAttribute('spec'))
+                    spec=element.getAttribute("spec");
+                    else 
+                    spec=element.getAttribute("specimg");
+                    if (spec!=undefined) {
+                        
+                        title=spec;
+                        if ('common' in ancestors[spec])
+                           title+=' - '+ancestors[spec]['common'];
+                        // Set the images
+                        $('#dialogimg').ImageLoad("images/"+spec+".jpg");
+                        //Open the dialog
+                        $( "#dialog" ).dialog({ title: title }).dialog('open');
+
+                        var markup =ancestors[spec]['info'];//'**dog**' ;//'= Title\ninline math: \\(\\frac{-b\\pm\\sqrt{b^2-4ac}}{2a}\\)\n';
+                        var div = document.getElementById('dialogmsg');
+                        div.innerHTML='';
+                        // Convert grok and openai creole to html
+                        creole.parse(div, markup);
+                    }
+
+                });
+
+                $("#dialog").dialog({
+                    autoOpen: false,
+                    show: {
+                        effect: "blind",
+                        duration: 100
+                    },
+                    hide: {
+                        effect: "explode",
+                        duration: 100
+                    },
+                    width:1024,
+                    modal : true,
+                    position: { my: "center", at: "top" }
+                });
+
+
+                // Have tree zoom in so user knows it is big
+                zoom(0.2, true);
+
+                // Change zoom based upon slider
+                $( function() {
+                    $( "#slider" ).slider(
+                        {
+                            value:100,
+                            slide: function( event, ui ) {
+                                console.log("ui"+ui.value);
+                                zoom(0.2+0.8*ui.value/100.0, false);
+                            }
+                        }
+                    );
+                } );
+
+                
+
+            }) 
+            .catch(error => console.error('Failed to fetch data:', error)); 
+
+
+
+        });
+
+        function positioningBlockBug() {
+            var oldNode = window.treemain.nodeById(2);
+            //var newNode = $('#node_2_new');
+            var newNode = $('    <div id="node_2" class="window hidden"\n' +
+                '         data-id="2"\n' +
+                '         data-parent="0"\n' +
+                '         data-first-child="6"\n' +
+                '         data-next-sibling="3">\n' +
+                '        Node 2 NEW\n' +
+                '    </div>\n');
+            if (oldNode) {
+                // butta il nodo nel container
+                oldNode.replaceWith(newNode);
+                // rimostra il nodo
+                newNode.id = 'node_2';
+                newNode.show();
+                // aggiorna l'albero
+                window.treemain.update();
+            }
+
+        }
+
+    </script>
+
+
+</body>
+</html>
