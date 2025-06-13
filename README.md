@@ -1,4 +1,4 @@
-Displays a tree view of the ancestors of 85 common animals and their ancestors all the way up to the first animal Choanoflagellates. It is 100% javascript so requires no installation. You can just upload to your server and it should work. All species information including family tree is located in ancestors.json which is in the root. This json file is loaded and a jsplum tree is created recursively on the fly. 
+Displays an evolutionary tree view of the ancestors of 85 common animals and their ancestors all the way up to the first animal Choanoflagellates. It is 100% javascript so requires no installation. You can just upload to your server and it should work. All species information including family tree is located in ancestors.json which is in the root. This json file is loaded and a jsplum tree is created recursively on the fly. 
 
 The species information in the json file is in creole markup format and is converted into html using creole.js.
 
